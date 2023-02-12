@@ -1,52 +1,59 @@
-import random
-import telebot
+from telegram import InlineQueryResultArticle, InputMessageContent
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, InlineQueryHandler
+import telegram.ext.filters
+
+TOKEN = '5992639409:AAHoNN7SrAY7t6sVanHvBuW3tYmjHtGyxGQ'
+updater = Updater(token=TOKEN)
+dispatcher = updater.dispatcher
 
 
-@bot.message_handler(content_types=["text"])
-def get_text_messages(message):
-    if message.text == "Привет":
-        bot.send_message(
-            message.from_user.id, "Привет, сейчас я расскажу тебе гороскоп на сегодня."
-        )
-    elif message.text == "/help":
-        bot.send_message(message.from_user.id, "Напиши Привет")
+def start(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="I'm a bot, please talk to me")
+
+
+def echo(update, context):
+    text = 'ECHO: ' + update.message.text
+    context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+
+
+def caps(update, context):
+    if context.args:
+        text_caps = ' '.join(context.args).upper()
+        context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
     else:
-        bot.send_message(message.from_user.id, "Я тебя не понимаю. Напиши /help.")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="No command argument")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="send: /caps argument")
 
 
-first = [
-    "По словам астролога, для огненных, вспыльчивых и импульсивных Овнов важным будет май.",
-    "В это время их планета-покровитель Марс окажется в знаке, что придаст больше энергии, сил и приятных сюрпризов.",
-    "В этом месяце стоит ждать успехов в карьере и личной жизни",
-]
+def inline_caps(update, context):
+    query = update.inline_query.query
+    if not query:
+        return
+    results = list()
+    results.append(InlineQueryResultArticle(id=query.upper(), title='Convert to UPPER TEXT',
+                                            input_message_content=InputMessageContent(query.upper())))
+    context.bot.answer_inline_query(update.inline_query.id, results)
 
-second = [
-    "Представителям этого знака покровительница Венера позволит с головой окунуться в романтические чувства.",
-    "А Меркурий в Тельце с 11 по 28 апреля даст огромное преимущество перед другими людьми в сферах карьеры,",
-    "личного роста и обучении",
-]
 
-third = [
-    "Август – звездный час для Львов. В это время покровитель, Солнце, будет проходить знак.",
-    "Лучший месяц для саморекламы, продвижения, похвалы себя и своих успехов. Не бойтесь проявлять себя.",
-    "Уделите время интересам, карьере и хобби. Возможно, оно станет вашим делом жизни",
-]
+def unknown(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, I didn't understand that command")
 
-print("1 - Овен")
-print("2 - Телец")
-print("3 - Близнецы")
-print("4 - Рак")
-print("5 - Лев")
-print("6 - Дева")
-print("7 - Весы")
-print("8 - Скорпион")
-print("9 - Стрелец")
-print("10 - Козерог")
-print("11 - Водолей")
-print("12 - Рыбы")
-# спрашиваем у юзера про знак
-zodiac = int(input("{blue}Введите число с номером знака зодиака:{endcolor}"))
-if 0 < zodiac < 13:
-    print(random.choice(first), random.choice(second), random.choice(third))
-else:
-    print("Вы ошиблись с числом, запустите программу еще раз")
+
+start_handler = CommandHandler('start', start)
+dispatcher.add_handler(start_handler)
+
+echo_handler = MessageHandler(Filters.txt & (~Filters.command), echo)
+dispatcher.add_handler(echo_handler)
+
+caps_handler = CommandHandler('caps', caps)
+dispatcher.add_handler(caps_handler)
+
+inline_caps_handler = InlineQueryHandler(inline_caps)
+dispatcher.add_handler(inline_caps_handler)
+
+unknown_handler = MessageHandler(Filters.command, unknown)
+dispatcher.add_handler(unknown_handler)
+
+updater.start_polling()
+
+updater.idle()
