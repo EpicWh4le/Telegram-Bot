@@ -1,59 +1,56 @@
-from telegram import InlineQueryResultArticle, InputMessageContent
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, InlineQueryHandler
-import telegram.ext.filters
+import logging
+from telegram import Update
+from telegram import InlineQueryResultArticle, InputTextMessageContent
+from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, InlineQueryHandler
 
-TOKEN = '5992639409:AAHoNN7SrAY7t6sVanHvBuW3tYmjHtGyxGQ'
-updater = Updater(token=TOKEN)
-dispatcher = updater.dispatcher
-
-
-def start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="I'm a bot, please talk to me")
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 
 
-def echo(update, context):
-    text = 'ECHO: ' + update.message.text
-    context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+async def start(update, context):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id, text="I'm a bot, please talk to me!"
+    )
 
 
-def caps(update, context):
-    if context.args:
-        text_caps = ' '.join(context.args).upper()
-        context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
-    else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="No command argument")
-        context.bot.send_message(chat_id=update.effective_chat.id, text="send: /caps argument")
+async def echo(update, context):
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=update.message.text)
 
 
-def inline_caps(update, context):
+async def caps(update, context):
+    text_caps = ''.join(context.args).upper()
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
+
+
+async def inline_caps(update, context):
     query = update.inline_query.query
     if not query:
         return
-    results = list()
-    results.append(InlineQueryResultArticle(id=query.upper(), title='Convert to UPPER TEXT',
-                                            input_message_content=InputMessageContent(query.upper())))
-    context.bot.answer_inline_query(update.inline_query.id, results)
+    results = []
+    results.append(InlineQueryResultArticle(id=query.upper(), title='Caps',
+                                            input_message_content=InputTextMessageContent(query.upper())))
+    await context.bot.answer_inline_query(update.inline_query.id, results)
 
 
-def unknown(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, I didn't understand that command")
+async def unknown(update, context):
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, I didn't understand that command")
 
+if __name__ == '__main__':
+    TOKEN = '5992639409:AAHoNN7SrAY7t6sVanHvBuW3tYmjHtGyxGQ'
 
-start_handler = CommandHandler('start', start)
-dispatcher.add_handler(start_handler)
+    application = ApplicationBuilder().token(TOKEN).build()
 
-echo_handler = MessageHandler(Filters.txt & (~Filters.command), echo)
-dispatcher.add_handler(echo_handler)
+    start_handler = CommandHandler('start', start)
+    echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
+    caps_handler = CommandHandler('caps', caps)
+    inline_caps_handler = InlineQueryHandler(inline_caps)
+    unknown_handler = MessageHandler(filters.COMMAND, unknown)
 
-caps_handler = CommandHandler('caps', caps)
-dispatcher.add_handler(caps_handler)
+    application.add_handler(start_handler)
+    application.add_handler(echo_handler)
+    application.add_handler(caps_handler)
+    application.add_handler(inline_caps_handler)
+    application.add_handler(unknown_handler)
 
-inline_caps_handler = InlineQueryHandler(inline_caps)
-dispatcher.add_handler(inline_caps_handler)
-
-unknown_handler = MessageHandler(Filters.command, unknown)
-dispatcher.add_handler(unknown_handler)
-
-updater.start_polling()
-
-updater.idle()
+    application.run_polling()
